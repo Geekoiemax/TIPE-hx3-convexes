@@ -128,7 +128,6 @@ def greedy_cover(tc: tuple) -> list:
         C.append(Tc[i_max])
 
     Inter = [P[i] for i in I]
-    print("Inter =", Inter)
     return Inter
 
 
