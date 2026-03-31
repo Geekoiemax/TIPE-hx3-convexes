@@ -31,6 +31,12 @@ def random_cloud(n: int, a: int) -> np.ndarray:
     indices = np.random.choice(len(points), size=n, replace=False)
     return points[indices]
 
+def random_cloud_2(n: int, a: int) -> np.ndarray:
+    assert n <= (a+1)**2, "Not enough points to generate"
+    # Sample n unique flat indices from [0, (a+1)²) and convert to 2D coords
+    flat = np.random.choice((a + 1) ** 2, size=n, replace=False)
+    return np.stack([flat // (a + 1), flat % (a + 1)], axis=1)
+
 
 # ---------------------------------------------------------------------------
 # Données d'exemple
