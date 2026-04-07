@@ -7,7 +7,6 @@ chaque ligne étant un point [x, y].
 
 from hx3_convexes._common import *
 
-
 # ---------------------------------------------------------------------------
 # Affichage
 # ---------------------------------------------------------------------------
@@ -85,7 +84,7 @@ def split_line(L: np.ndarray, M: np.ndarray) -> np.ndarray:
     """
     L = np.asarray(L)
     M = np.asarray(M)
-    if len(L)> 0 and not np.array_equal(L[0],M[0]) :
+    if len(L)> 0 and not np.array_equal(L[0][0],M[0]) :
         right = L[L[:, 0] > M[0]]
         left  = L[L[:, 0] < M[0]]
     else :
@@ -134,7 +133,7 @@ def droites(c: np.ndarray, a: int, show: bool = True, showhull: bool = True):
     best_on_line = np.empty((0, 2))
 
     for B in c0:
-        E, H, G = split_plan(c, A, B)
+        E, H, G = split_plan(c0, A, B)
         for side in (E, H):
             if len(side) >= best_count:
                 best_count   = len(side)
@@ -143,6 +142,7 @@ def droites(c: np.ndarray, a: int, show: bool = True, showhull: bool = True):
                 best_on_line = G
         if best_count == len(c0):
             break   # on ne peut pas faire mieux
+
 
     # Ajoute les points colinéaires du bon côté
     if len(best_on_line) > 0:
@@ -169,5 +169,83 @@ def droites(c: np.ndarray, a: int, show: bool = True, showhull: bool = True):
         cursor(hover=True)
         plt.show()
 
-    return len(best_side)
+    return len(c) - len(best_side)
 
+
+def decapitate(x,L) : 
+    return [y for y in L if not np.array_equal(x, y)]
+
+def droites_heuristique(c: np.ndarray, a: int, show: bool = False, showhull: bool = True):
+    """
+    Pour le point c[a], trouve la droite passant par c[a] qui maximise
+    le nombre de points d'un même côté.
+    Retourne la taille du plus grand demi-plan peuplé.
+
+    Paramètres
+    ----------
+    c       : np.array (n, 2) — nuage de points
+    a       : indice du point étudié
+    show    : affiche la figure matplotlib si True
+    showhull: trace l'enveloppe convexe du demi-plan max si True
+    """
+    c = np.asarray(c, dtype=float)
+    c0 = np.delete(c, a, axis=0)   # nuage sans le point a
+    iteratives = list(c0.copy())
+    A = c[a]
+
+    best_count   = 0
+    best_side    = np.empty((0, 2))
+    best_B       = A.copy()
+    best_on_line = np.empty((0, 2))
+
+    for B in iteratives:
+        E,G,H = np.empty((0, 2)),np.empty((0, 2)),np.empty((0, 2))
+        for k,M in enumerate(c0) : 
+            o = orient(A,B,M)
+            if o > 0 : 
+                E = np.vstack([E,M])
+            elif o == 0 :
+                G = np.vstack([G,M])
+                iteratives = decapitate(M,iteratives)
+            else : 
+                H = np.vstack([H,M])
+            if max(len(E),len(H)) + len(c0) < best_count + k + 1 : 
+                break
+        if len(E) >= best_count:
+            best_count   = len(E)
+            best_side    = E
+            best_B       = B
+            best_on_line = G
+            worst_side = H
+
+        if len(H) >= best_count:
+            best_count   = len(H)
+            best_side    = H
+            best_B       = B
+            best_on_line = G
+            worst_side = E
+
+        if best_count == len(c0):
+            break   # on ne peut pas faire mieux
+    # Ajoute les points colinéaires du bon côté
+
+    if len(best_on_line) > 0:
+        extra = split_line(best_on_line, A)
+        if len(extra) > 0:
+            best_side = np.vstack([best_side, extra])
+
+    res = profondeurRes(
+            rang=len(c0) - best_count,
+            corang=best_count,
+            queue=best_side,
+            tete=worst_side,
+            pivot=best_B,
+            nuage=c,
+            alignes=best_on_line,
+            point_etude= A,
+            nuage_sans_etude= c0
+        )
+
+    if show:
+        res.show(showhull=showhull)
+    return res
